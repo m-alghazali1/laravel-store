@@ -11,6 +11,8 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="{{ asset('assets/bootstrap-5.0.2-dist/css/bootstrap.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css.css') }}">
+     <!-- toaster style --}}-->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/toastr/toastr.min.css') }}">
     @yield('style')
 </head>
 
@@ -31,10 +33,13 @@
                             </form>
                             <li class="nav-item"><a class="nav-link active"
                                     href="{{ route('products.index') }}">Home</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ route('products.airpods') }}">Air pods</a>
-                            </li>
-                            <li class="nav-item"><a class="nav-link" href="">Smart
-                                    Watch</a></li>
+                            @foreach ($categories as $category)
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ route('products.category', $category->id) }}">
+                                        {{ $category->name }}
+                                    </a>
+                                </li>
+                            @endforeach
                             <li class="nav-item"><a class="nav-link none_first none col-lg-0.5" href="cart.html">cart<i
                                         class="ms-1 fa-solid fa-bag-shopping"></i></a></li>
                         </ul>
@@ -43,12 +48,22 @@
                     <a data-bs-toggle="modal" data-bs-target="#myModal" class="none  text-dark" href="#input">
                         <i class="fa-solid fa-magnifying-glass me-5"></i>
                     </a>
-                    <a class="none text-dark" href="cart.html">
+                    <a class="none text-dark" href="{{route('cart.index')}}">
                         <i class="fa-solid fa-bag-shopping"></i>
                     </a>
-                    <a class="none text-dark ms-5" href="{{ route('admin.login.show') }}">
-                        <i class="nav-icon fas fa-user-tie "></i>
-                    </a>
+                    @if(\Illuminate\Support\Facades\Auth::guard('user')->Check())
+                        <form method="GET" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="btn btn-link p-0 m-0 align-baseline ms-5">
+                                <i class="nav-icon fas fa-sign-out-alt"></i>
+                            </button>
+                        </form>
+                    @else
+                        <a class="none text-dark ms-5" href="{{ route('auth.login.show', ['guard' => 'user']) }}">
+                            <i class="nav-icon fas fa-user-tie "></i>
+                        </a>
+                    @endif
+
                 </div>
             </nav>
         </div>

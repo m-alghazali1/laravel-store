@@ -40,21 +40,22 @@
                             @if ($product->old_price)
                                 <span class="badge bg-danger w-25 card-img-overlay" style="height: 25px">Sale</span>
                             @endif
+                            <div class="card-body">
+                                <h5 class="card-title text-dark">{{ $product->name }}</h5>
+                                <p class="card-text text-dark">
+                                    @if ($product->old_price)
+                                        <del>${{ $product->old_price }}</del>&nbsp;&nbsp;
+                                    @endif
+                                    ${{ $product->price }}
+                                </p>
+
+                                <a href="{{ route('admin.products.edit', $product->id) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            </div>
                         </a>
 
-                        <div class="card-body">
-                            <h5 class="card-title text-dark">{{ $product->name }}</h5>
-                            <p class="card-text text-dark">
-                                @if ($product->old_price)
-                                    <del>${{ $product->old_price }}</del>&nbsp;&nbsp;
-                                @endif
-                                ${{ $product->price }}
-                            </p>
 
-                            <a href="{{ route('admin.products.edit', $product->id) }}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
-                        </div>
                     </div>
                 </div>
             @endforeach

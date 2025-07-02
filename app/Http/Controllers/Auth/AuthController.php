@@ -33,33 +33,47 @@ class AuthController extends Controller
             $admin->password = Hash::make($request->input("password"));
             $saved = $admin->save();
             return redirect()->route("admin.login.show")
-            ->with([
-                "status" => $saved,
-                'message' => $saved ? 'Created Account Sccessfully' : 'Created Account Failed',
-            ]);
+                ->with([
+                    "status" => $saved,
+                    'message' => $saved ? 'Created Account Sccessfully' : 'Created Account Failed',
+                ]);
 
         }
 
 
     }
 
-    public function showLogin(Request $request)
+    public function showLogin(Request $request, $guard)
     {
-        return view("auth.login");
+        $validator = validator(['guard' => $guard], [
+            'guard' => 'required|string|in:admin,user'
+        ]);
+        if (!$validator->fails()) {
+            session()->put('guard', $guard);
+            return response()->view('auth.login');
+        }
+        abort(Response::HTTP_FORBIDDEN, 'URL Rejected');
     }
 
     public function login(Request $request)
     {
-        // $table = Str::plural(session('guard'));
+        $table = Str::plural(session('guard'));
 
         $validator = validator($request->all(), [
-            'email' => "required|email|exists:admins,email",
+            'email' => "required|email|exists:$table,email",
             'password' => 'required|string',
             'remember_me' => 'required|boolean'
         ]);
+
+        $guard = session('guard');
         if (!$validator->fails()) {
             if (Auth::guard(session('guard'))->attempt($request->only(['email', 'password']), $request->input('remember_me'))) {
+                $defaultRedirectUrl = $guard === 'admin'
+                    ? route('admin.products.index')
+                    : route('products.index');
+
                 return response()->json([
+                    'redirect_url' => $defaultRedirectUrl,
                     'message' => 'Login in successfully'
                 ], Response::HTTP_OK);
             } else {
@@ -77,9 +91,22 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        auth('admin')->logout();
-        $request->session()->invalidate();
-        session()->remove('session');
-        return redirect()->route('admin.login.show');
+        if (Auth::guard('admin')->check()) {
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('auth.login.show', ['guard' => 'admin']);
+        }
+
+        if (Auth::guard('user')->check()) {
+            Auth::guard('user')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('auth.login.show', ['guard' => 'user']);
+        }
+
+        // fallback لو ما كان مسجل دخول
+        return redirect('/');
     }
+
 }

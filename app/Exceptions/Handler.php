@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -17,6 +18,21 @@ class Handler extends ExceptionHandler
         'password',
         'password_confirmation',
     ];
+
+    protected function unauthenticated($request, AuthenticationException $exception)
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            // لو الطلب من api/.. أو متوقع json
+            return response()->json(['message' => 'User not authenticated'], 401);
+        }
+        if ($request->is('admin/*')) {
+            return redirect()->guest(route('auth.login.show', ['guard' => 'admin']));
+        }else{
+            return redirect()->guest(route('auth.login.show', ['guard' => 'user']));
+        }
+
+    }
+
 
     /**
      * Register the exception handling callbacks for the application.

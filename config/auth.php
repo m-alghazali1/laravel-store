@@ -36,14 +36,27 @@ return [
     */
 
     'guards' => [
+        'web' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+
         'user' => [
             'driver' => 'session',
             'provider' => 'users',
         ],
-        'admin' =>[
+        'admin' => [
             'driver' => 'session',
-            'provider' => 'admins'
-        ]
+            'provider' => 'admins',
+        ],
+       'admin-api' =>[
+           'driver' => 'sanctum',
+           'provider' => 'admins'
+       ],
+       'user-api' =>[
+           'driver' => 'sanctum',
+           'provider' => 'users'
+       ]
     ],
 
     /*
@@ -106,6 +119,7 @@ return [
             'expire' => 3,
             'throttle' => 60,
         ],
+
     ],
 
     /*

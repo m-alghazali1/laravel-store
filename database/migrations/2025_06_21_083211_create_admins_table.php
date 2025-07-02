@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name', 20);
             $table->string('email', 50);
             $table->string('password');
+            $table->rememberToken();
             $table->timestamps();
         });
     }

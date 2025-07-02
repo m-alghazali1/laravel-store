@@ -1,17 +1,13 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Api\Admin;
 
-use App\Models\Category;
+use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Log;
+use Storage;
 use Symfony\Component\HttpFoundation\Response;
-use App\Http\Controllers\Controller;
-use function Laravel\Prompts\alert;
-
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
@@ -21,16 +17,11 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::with('category', 'images')->get();
-        return view('admin.products.index', compact('products'));
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        $categories = Category::all();
-        return view('admin.products.create', ['categories' => $categories]);
+        return response()->json([
+            'status' => true,
+            'message' => 'Products fetched successfully',
+            'data' => $products
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -41,7 +32,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'description' => 'nullable|string',
-            'oldPrice' => 'nullable|numeric|min:0',
+            'old_price' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
             'quantity' => 'required|integer|min:1',
             'category_id' => 'required|exists:categories,id',
@@ -50,7 +41,7 @@ class ProductController extends Controller
         $product = new Product();
         $product->name = $request->input('name');
         $product->description = $request->input('description');
-        $product->old_price = $request->input('oldPrice', null);
+        $product->old_price = $request->input('old_price', null);
         $product->price = $request->input('price');
         $product->quantity = $request->input('quantity');
         $product->category_id = $request->input('category_id');
@@ -67,11 +58,11 @@ class ProductController extends Controller
                 $product_images->save();
             }
         }
-
         return response()->json([
-            'status' => $isSaved,
-            'message' => $isSaved ? "Saved Successfully" : "Save failed",
-        ], $isSaved ? Response::HTTP_CREATED : Response::HTTP_BAD_REQUEST);
+            'status' => true,
+            'message' => 'Product created successfully',
+            'product' => $product->load('images')
+        ], Response::HTTP_CREATED);
     }
 
     /**
@@ -79,23 +70,21 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['category', 'images'])->findOrFail($id);
+        $product = Product::with(['category', 'images'])->find($id);
         $moreProduct = Product::inRandomOrder()->take(4)->get();
 
-        return view('admin.products.show', [
+        if (!$product) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, product with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Product fetched successfully',
             'product' => $product,
             'moreProduct' => $moreProduct
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $product = Product::with('category')->findOrFail($id);
-        $categories = Category::all();
-        return view('admin.products.edit', ['product' => $product, 'categories' => $categories]);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -112,7 +101,14 @@ class ProductController extends Controller
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        $product = Product::findOrFail($id);
+        $product = Product::find($id);
+
+        if (!$product){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, product with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         $product->name = $request->input('name');
         $product->description = $request->input('description');
@@ -134,11 +130,16 @@ class ProductController extends Controller
                     ]);
                 }
             }
-            return response()->json(['message' => 'Product saved successfully']);
+            return response()->json([
+                'status' => true,
+                'message' => 'Product saved successfully'
+            ], Response::HTTP_OK);
         } else {
-            return response()->json(['message' => 'Product save failed!'], 500);
+            return response()->json([
+                'status' => false,
+                'message' => 'Product save failed!'
+            ], Response::HTTP_BAD_REQUEST);
         }
-
     }
 
     /**
@@ -146,46 +147,82 @@ class ProductController extends Controller
      */
     public function destroy(string $id)
     {
-        $deleted = Product::findOrFail($id)->delete();
+        $product = Product::with('images')->find($id);
+        if (!$product){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, product with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
+        $deleted = $product->delete();
+
         return response()->json([
             "status" => $deleted,
-            "message" => $deleted ? "Deleted Successfully" : "Delete Failed",
-            "icon" => $deleted ? "success" : "Error",
-        ]);
+            "message" => $deleted ? "Deleted Successfully" : "Delete Failed"
+        ], $deleted ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);;
     }
+
 
     public function trash()
     {
         $products = Product::onlyTrashed()->get();
-        return view('admin.products.trash', compact('products'));
+        return response()->json([
+            'status' => true,
+            'message' => 'Deleted products fetched successfully',
+            'data' => $products
+        ], Response::HTTP_OK);
     }
 
     public function forceDelete(string $id)
     {
-        $deleted = Product::onlyTrashed()->findOrFail($id)->forceDelete();
+        $product = Product::onlyTrashed()->find($id);
+        if (!$product){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, product with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
+        $deleted = false;
+        if ($product->images && count($product->images) > 0) {
+            foreach ($product->images as $image) {
+                Storage::disk('public')->delete($image->image_url);
+                $image->delete();
+            }
+        }
+        $deleted = $product->forceDelete();
         return response()->json([
-            "status" => "$deleted",
-            "message" => $deleted ? "Deleted Successfully" : "Delete Failed",
-            "icon" => $deleted ? "success" : "Error",
-        ]);
+            'status' => $deleted,
+            'message' => $deleted ? 'Deleted Successfully' : 'Delete Failed'
+        ], $deleted ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
     }
 
 
     public function restore($id)
     {
-        $products = Product::onlyTrashed()->findOrFail($id);
+        $products = Product::onlyTrashed()->find($id);
+        if (!$products){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, product with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
         $restored = $products->restore();
 
         return response()->json([
             'status' => $restored,
-            'message' => $restored ? 'Restored successfully!' : 'Restore failed!',
-            'icon' => $restored ? 'success' : 'error'
-        ]);
+            'message' => $restored ? 'Restored successfully!' : 'Restore failed!'
+        ], $restored ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
     }
 
     public function deleteImage($id)
     {
-        $image = ProductImage::findOrFail($id);
+        $image = ProductImage::find($id);
+        if (!$image){
+            return response()->json([
+                'status' => false,
+                'message' => 'Sorry, image with id ' . $id . ' cannot be found'
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         if (Storage::disk('public')->exists($image->image_url)) {
             Storage::disk('public')->delete($image->image_url);
@@ -196,18 +233,14 @@ class ProductController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Image deleted successfully'
-            ]);
+            ], Response::HTTP_OK);
 
         } else {
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to delete image'
-            ], 500);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
-        // return redirect()->back()->with([
-        //     'message' => $deleted ? 'Image deleted successfully' : 'Failed to delete image',
-        //     'status' => $deleted,
-        // ]);
     }
 }

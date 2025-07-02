@@ -86,7 +86,12 @@
                                             <label class="custom-file-label" for="image-input">Choose image</label>
                                         </div>
                                     </div>
+                                    <div class="mt-3">
+                                        <h5>Selected Images Preview:</h5>
+                                        <div id="preview-images" class="row g-3"></div>
+                                    </div>
                                 </div>
+
                                 <div class="form-group">
                                     <label for="quantity">Quantity</label>
                                     <input type="number" class="form-control" id="quantity" placeholder="Enter Quantity"
@@ -126,10 +131,9 @@
             formData.append('category_id', document.getElementById('category_id').value);
             formData.append('quantity', document.getElementById('quantity').value);
 
-            let imageFiles = document.getElementById('image-input').files;
-            for (let i = 0; i < imageFiles.length; i++) {
-                formData.append('images[]', imageFiles[i]);
-            }
+            selectedFiles.forEach(file => {
+                formData.append('images[]', file);
+            });
 
             axios.post('/admin/products', formData)
                 .then(function(response) {
@@ -141,6 +145,59 @@
                 .catch(function(error) {
                     toastr.error(error.response.data.message)
                 })
+        }
+
+        let selectedFiles = [];
+
+        document.getElementById('image-input').addEventListener('change', function(event) {
+
+            for (let file of event.target.files) {
+                selectedFiles.push(file);
+            }
+            renderPreviews();
+            this.value = '';
+        });
+
+        function renderPreviews() {
+            let container = document.getElementById('preview-images');
+            container.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let div = document.createElement('div');
+                    div.style.position = 'relative';
+                    div.style.display = 'inline-block';
+                    div.style.margin = '10px';
+
+                    let img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '120px';
+                    img.style.height = '120px';
+                    img.style.borderRadius = '8px';
+
+                    let btn = document.createElement('button');
+                    btn.innerText = '×';
+                    btn.style.position = 'absolute';
+                    btn.style.top = '2px';
+                    btn.style.right = '2px';
+                    btn.style.background = 'red';
+                    btn.style.color = 'white';
+                    btn.style.border = 'none';
+                    btn.style.borderRadius = '50%';
+                    btn.style.cursor = 'pointer';
+                    btn.style.width = '20px';
+                    btn.style.height = '20px';
+                    btn.onclick = function() {
+                        selectedFiles.splice(index, 1);
+                        renderPreviews();
+                    };
+
+                    div.appendChild(img);
+                    div.appendChild(btn);
+                    container.appendChild(div);
+                }
+                reader.readAsDataURL(file);
+            });
         }
     </script>
 
