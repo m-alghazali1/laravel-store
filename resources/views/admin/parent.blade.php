@@ -46,7 +46,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             style="color: #ccc; font-size: 28px; margin-right: 12px;"></i>
                     </div>
                     <div class="info">
-                        <a href="#" class="d-block">{{ auth()->user()->name }}</a>
+                        <a href="{{route('admin.index')}}" class="d-block">{{ auth()->user()->name }}</a>
                     </div>
                 </div>
 
@@ -55,6 +55,11 @@ scratch. This page gets rid of all links and provides the needed markup only.
                 <nav class="mt-2">
                     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                         data-accordion="false">
+                        @include('admin.componets.nav-item', [
+                            'route'=>'admin.users.index',
+                            'name'=>'Users',
+                            'icon'=>'fa-user-tie'
+                        ])
                         @include('admin.componets.nav-item', [
                             'route' => 'admin.products.create',
                             'name' => 'Create Products',
@@ -66,15 +71,16 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             'icon'=>'fa-th-large'
                         ])
                         @include('admin.componets.nav-item',[
+                            'route'=>'admin.categories.create',
+                            'name'=>'Create Category',
+                            'icon'=>'fa-plus',
+                        ])
+                        @include('admin.componets.nav-item',[
                             'route'=>'admin.categories.index',
                             'name'=>'All Category',
                             'icon'=>'fa-th-large'
                         ])
-                        @include('admin.componets.nav-item',[
-                            'route'=>'admin.categories.create',
-                            'name'=>'Create Category',
-                            'icon'=>'fa-edit',
-                        ])
+
                         @include('admin.componets.nav-item', [
                             'route'=>'admin.products.trash',
                             'name'=>'Trash Products',

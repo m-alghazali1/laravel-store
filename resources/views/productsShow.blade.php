@@ -1,4 +1,5 @@
 @extends('parents.home')
+
 @section('content')
     <div class="container p-0">
         <div class="row mt-5">
@@ -138,11 +139,18 @@
                     window.location.href = '/cart'; // إعادة التوجيه إلى صفحة السلة
                 })
                 .catch(error => {
-                    if (error.response.status === 401) {
-                        sessionStorage.setItem('intended', window.location.href);
-                        window.location.href = '/app/user/login';
+                    console.log("Error object:", error); // 👈 هذا سيساعدك في الديباج
+                    if (error.response) {
+                        if (error.response.status === 401) {
+                            sessionStorage.setItem('intended', window.location.href);
+                            window.location.href = '/app/user/login';
+                        } else if (error.response.data && error.response.data.message) {
+                            toastr.error(error.response.data.message);
+                        } else {
+                            toastr.error('Something went wrong');
+                        }
                     } else {
-                        toastr.error(error.response.data.message || 'Failed to add to cart');
+                        toastr.error('No response from server');
                     }
                 });
         });

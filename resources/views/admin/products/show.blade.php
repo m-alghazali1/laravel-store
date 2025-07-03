@@ -7,7 +7,7 @@
                 <div class="col-7">
                     <div>
                         @if ($product->images->first())
-                                <img src="{{ asset('storage/' . $product_item->images->first()->image_url) }}"
+                                <img src="{{ asset('storage/' . $product->images->first()->image_url) }}"
                                     class="card-img-top" width="822px" height="290px" alt="product image">
                             @endif
                     </div>

@@ -45,7 +45,7 @@
 
                                 <div class="form-group">
                                     <label>Select</label>
-                                    <select class="form-control" id="category_id">
+                                    <select class="form-control" id="category_id" name="category_id">
                                         @if ($categories && count($categories) > 0)
                                             @foreach ($categories as $category)
                                                 <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -123,13 +123,9 @@
     </script>
     <script>
         function saveWithImage() {
-            let formData = new FormData();
-            formData.append('name', document.getElementById('name').value);
-            formData.append('description', document.getElementById('description').value);
-            formData.append('oldPrice', document.getElementById('oldPrice').value);
-            formData.append('price', document.getElementById('price').value);
-            formData.append('category_id', document.getElementById('category_id').value);
-            formData.append('quantity', document.getElementById('quantity').value);
+            let formData = new FormData(document.getElementById('create-from'));
+
+            formData.delete('images[]');
 
             selectedFiles.forEach(file => {
                 formData.append('images[]', file);
@@ -137,15 +133,27 @@
 
             axios.post('/admin/products', formData)
                 .then(function(response) {
-                    toastr.success(response.data.message)
-                    document.getElementById('create-from').reset()
+                    toastr.success(response.data.message);
+                    document.getElementById('create-from').reset();
+                    selectedFiles = [];
+                    renderPreviews();
                     window.location.href = '/admin/products';
-
                 })
                 .catch(function(error) {
-                    toastr.error(error.response.data.message)
-                })
+                    if (error.response?.data?.errors) {
+                        const errors = error.response.data.errors;
+                        for (const key in errors) {
+                            errors[key].forEach(msg => toastr.error(msg));
+                        }
+                    } else if (error.response?.data?.message) {
+                        toastr.error(error.response.data.message);
+                    } else {
+                        toastr.error('Something went wrong');
+                    }
+                });
         }
+
+
 
         let selectedFiles = [];
 

@@ -81,4 +81,12 @@ class ProductController extends Controller
         return view('home', compact('products'));
     }
 
+    public function search(Request $request)
+    {
+        $products = Product::where('name', 'like', '%' . $request->search . '%')->with('images')->get();
+        return response()->json($products->toArray());
+
+        return response()->json($products);
+    }
+
 }

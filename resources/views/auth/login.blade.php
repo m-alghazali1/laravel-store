@@ -69,7 +69,7 @@
                     <a href="">I forgot my password</a>
                 </p>
                 <p class="mb-0">
-                    <a href="{{ route('auth.register.show') }}" class="text-center">Register a new membership</a>
+                    <a href="{{ route('auth.register.show', ['guard' => request('guard', 'user')]) }}" class="text-center">Register a new membership</a>
                 </p>
             </div>
             <!-- /.card-body -->

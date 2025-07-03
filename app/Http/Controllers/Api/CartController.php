@@ -107,7 +107,7 @@ class CartController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Cart item not found'
-            ], ٌResponse::HTTP_NOT_FOUND);
+            ], Response::HTTP_NOT_FOUND);
         }
 
         $deleted = $cartItem->delete();
@@ -115,7 +115,7 @@ class CartController extends Controller
         return response()->json([
             'status' => $deleted,
             'message' => $deleted ? 'Product Deleted from cart!' : 'Product not deleted!'
-        ], $deleted ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);;
+        ], $deleted ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST);
     }
 
 }

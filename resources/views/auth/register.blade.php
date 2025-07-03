@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="{{ asset('assets/plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}">
     <!-- Theme style -->
     <link rel="stylesheet" href="{{ asset('assets/dist/css/adminlte.min.css') }}">
+    <!-- toaster style -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/toastr/toastr.min.css') }}">
 </head>
 
 <body class="hold-transition register-page">
@@ -26,10 +28,10 @@
             <div class="card-body">
                 <p class="login-box-msg">Register a new membership</p>
 
-                <form action="{{route('admin.register')}}" method="post">
+                <form>
                     @csrf
                     <div class="input-group mb-3">
-                        <input type="text" class="form-control" placeholder="Full name" name="name">
+                        <input type="text" class="form-control" placeholder="Full name" id="name">
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-user"></span>
@@ -37,7 +39,7 @@
                         </div>
                     </div>
                     <div class="input-group mb-3">
-                        <input type="email" class="form-control" placeholder="Email" name="email">
+                        <input type="email" class="form-control" placeholder="Email" id="email">
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-envelope"></span>
@@ -45,7 +47,7 @@
                         </div>
                     </div>
                     <div class="input-group mb-3">
-                        <input type="password" class="form-control" placeholder="Password" name="password">
+                        <input type="password" class="form-control" placeholder="Password" id="password">
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-lock"></span>
@@ -53,21 +55,22 @@
                         </div>
                     </div>
                     <div class="input-group mb-3">
-                        <input type="password" class="form-control" placeholder="Retype password" name="retype_password">
+                        <input type="password" class="form-control" placeholder="Confirm Password" id="password_confirmation">
                         <div class="input-group-append">
                             <div class="input-group-text">
                                 <span class="fas fa-lock"></span>
                             </div>
                         </div>
                     </div>
+                    <input type="hidden" id="guard" value="{{ $guard }}">
                     <div class="row">
                         <div class="col-4">
-                            <button type="submit" class="btn btn-primary btn-block">Register</button>
+                            <button type="button" onclick="register()" class="btn btn-primary btn-block">Register</button>
                         </div>
                         <!-- /.col -->
                     </div>
                 </form>
-                <a href="{{route('admin.login.show')}}" class="text-center">I already have a membership</a>
+                <a href="{{route('auth.login.show', $guard)}}" class="text-center">I already have a membership</a>
             </div>
             <!-- /.form-box -->
         </div><!-- /.card -->
@@ -80,6 +83,33 @@
     <script src="{{ asset('assets/plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <!-- AdminLTE App -->
     <script src="{{ asset('assets/dist/js/adminlte.min.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
+    <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
+
+    <script>
+        function register() {
+            axios.post('/app/register', {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                password_confirmation: document.getElementById('password_confirmation').value,
+                guard: document.getElementById('guard').value,
+            }).then(function(response) {
+                const intended = sessionStorage.getItem('intended');
+                sessionStorage.removeItem('intended');
+
+                if (intended) {
+                    window.location.href = intended;
+                } else {
+                    toastr.success(response.data.message);
+                    window.location.href = response.data.redirect_url;
+                }
+            })
+                .catch(function(error) {
+                    toastr.error(error.response.data.message);
+                });
+        }
+    </script>
 </body>
 
 </html>

@@ -5,6 +5,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\admin;
 use Illuminate\Support\Facades\Route;
 
@@ -19,11 +20,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', action: function () {
-    return view('admin.categories.category');
-});
-
-
+Route::get('/products/search', [ProductController::class, 'search'])->name('products.search');
 Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(function () {
     Route::resource('categories', CategoryController::class);
 
@@ -37,17 +34,27 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(functi
     });
     Route::resource('products', Admin\ProductController::class);
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
+    // New Routs
+    Route::get('/data', [\App\Http\Controllers\Admin\AdminController::class, 'index'])->name('index');
+
+    Route::get('users', [Admin\UserController::class, 'index'])->name('users.index');
+    Route::get('users/{id}', [Admin\UserController::class, 'show'])->name('users.show');
+    Route::delete('users/{id}', [Admin\UserController::class, 'destroy'])->name('users.destroy');
 });
 
 Route::prefix('app')->name('auth.')->middleware('guest:admin')->group(function () {
     Route::get('{guard}/login', [AuthController::class, 'showLogin'])->name('login.show');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register.show');
+    Route::get('{guard}/register', [AuthController::class, 'showRegister'])->name('register.show');
     Route::post('/register', [AuthController::class, 'register'])->name('register');
 });
 
+
 Route::get('products/category/{id}', [ProductController::class, 'categoryProducts'])->name('products.category');
-Route::resource('products', ProductController::class);
+Route::resource('products', ProductController::class)->only(['show', 'index',]);;
+
 
 Route::prefix('cart')->middleware(['auth:user'])->group(function () {
     Route::get('/', [CartController::class, 'index'])->name('cart.index');
@@ -56,9 +63,9 @@ Route::prefix('cart')->middleware(['auth:user'])->group(function () {
     Route::delete('/remove/{cart}', [CartController::class, 'destroy'])->name('cart.remove');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 });
-Route::get('/cart/debug', function () {
-    return \Illuminate\Support\Facades\Auth::guard('user')->check() ? 'Logged in as user' : 'Not logged in';
-});
 
+//Route::get('/cart/debug', function () {
+//    return \Illuminate\Support\Facades\Auth::guard('user')->check() ? 'Logged in as user' : 'Not logged in';
+//});
 
 

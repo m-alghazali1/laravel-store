@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\User;
 use Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,9 +14,16 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    public function showRegister(Request $request)
+    public function showRegister(Request $request, $guard)
     {
-        return view("auth.register");
+        $validator = validator(['guard' => $guard], [
+            'guard' => 'required|string|in:admin,user'
+        ]);
+        if (!$validator->fails()) {
+            session()->put('guard', $guard);
+            return view("auth.register", compact('guard'));
+        }
+        abort(Response::HTTP_FORBIDDEN, 'URL Rejected');
     }
 
     public function register(Request $request)
@@ -23,24 +31,36 @@ class AuthController extends Controller
         $validator = validator($request->all(), [
             'name' => "required|string",
             'email' => "required|email",
-            'password' => "required|string",
+            'password' => "required|string|confirmed",
+            'guard' => 'required|in:admin,user'
         ]);
-
+        $guard = $request->input('guard');
         if (!$validator->fails()) {
-            $admin = new Admin();
-            $admin->name = $request->input("name");
-            $admin->email = $request->input("email");
-            $admin->password = Hash::make($request->input("password"));
-            $saved = $admin->save();
-            return redirect()->route("admin.login.show")
-                ->with([
-                    "status" => $saved,
-                    'message' => $saved ? 'Created Account Sccessfully' : 'Created Account Failed',
-                ]);
 
+            if ($guard === 'admin') {
+                $admin = new Admin();
+                $admin->name = $request->input("name");
+                $admin->email = $request->input("email");
+                $admin->password = Hash::make($request->input("password"));
+                $saved = $admin->save();
+            } else {
+                $user = new User();
+                $user->name = $request->input("name");
+                $user->email = $request->input("email");
+                $user->password = Hash::make($request->input("password"));
+                $saved = $user->save();
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Created Account Successfully',
+                'redirect_url' => route("auth.login.show", ['guard' => $guard]),
+            ], Response::HTTP_CREATED);;
         }
-
-
+        return response()->json([
+            'status' => false,
+            'message' => $validator->getMessageBag()->first()
+        ], Response::HTTP_BAD_REQUEST);
     }
 
     public function showLogin(Request $request, $guard)
@@ -105,7 +125,6 @@ class AuthController extends Controller
             return redirect()->route('auth.login.show', ['guard' => 'user']);
         }
 
-        // fallback لو ما كان مسجل دخول
         return redirect('/');
     }
 

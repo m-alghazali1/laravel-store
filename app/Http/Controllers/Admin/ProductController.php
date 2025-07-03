@@ -45,34 +45,58 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0',
             'quantity' => 'required|integer|min:1',
             'category_id' => 'required|exists:categories,id',
-            'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120'
+            'images' => 'required|array|min:1',
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120'
         ]);
+
+        // أنشئ المنتج
         $product = new Product();
         $product->name = $request->input('name');
         $product->description = $request->input('description');
-        $product->old_price = $request->input('oldPrice', null);
+        $product->old_price = $request->input('oldPrice');
         $product->price = $request->input('price');
         $product->quantity = $request->input('quantity');
         $product->category_id = $request->input('category_id');
-        $isSaved = $product->save();
 
-        if ($isSaved && $request->hasFile('images')) {
+        if (!$product->save()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'فشل في حفظ المنتج',
+            ], 400);
+        }
+
+        // حفظ الصور
+        if ($request->hasFile('images')) {
             foreach ($request->file('images') as $imageFile) {
+                if (!$imageFile->isValid()) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'يوجد صورة غير صالحة',
+                    ], 400);
+                }
+
                 $fileName = uniqid() . '_' . time() . '.' . $imageFile->getClientOriginalExtension();
                 $imagePath = $imageFile->storeAs('products', $fileName, 'public');
 
-                $product_images = new ProductImage();
-                $product_images->image_url = $imagePath;
-                $product_images->product_id = $product->id;
-                $product_images->save();
+                $image = new ProductImage();
+                $image->product_id = $product->id;
+                $image->image_url = $imagePath;
+
+                if (!$image->save()) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'فشل في حفظ إحدى الصور',
+                    ], 400);
+                }
             }
         }
 
         return response()->json([
-            'status' => $isSaved,
-            'message' => $isSaved ? "Saved Successfully" : "Save failed",
-        ], $isSaved ? Response::HTTP_CREATED : Response::HTTP_BAD_REQUEST);
+            'status' => true,
+            'message' => 'تم الحفظ بنجاح',
+        ], 201);
     }
+
 
     /**
      * Display the specified resource.

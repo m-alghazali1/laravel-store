@@ -1,4 +1,5 @@
 @extends('parents.home')
+
 @section('content')
     <div class="container py-5">
         <h2>Shopping Cart</h2>
@@ -111,4 +112,15 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('script')
+    <script>
+        @if (session('success'))
+            toastr.success("{{ session('success') }}");
+        @endif
+        @if (session('error'))
+            toastr.error("{{ session('error') }}");
+        @endif
+    </script>
 @endsection

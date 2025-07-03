@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\CartItem;
 use Illuminate\Http\Request;
 use App\Models\Product;
+use Symfony\Component\HttpFoundation\Response;
 
 class CartController extends Controller
 {
@@ -18,44 +19,58 @@ class CartController extends Controller
 
     public function store(Request $request, $product_id)
     {
-//        dd($request);
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1',
-            'product_id' => 'required|exists:products,id'
         ]);
+
+        $product = Product::find($product_id);
+        if (!$product) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Product not found.'
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         $cartItem = CartItem::where('user_id', auth()->id())
-            ->where('product_id', $validated['product_id'])
+            ->where('product_id', $product_id)
             ->first();
         if ($cartItem) {
             $cartItem->quantity +=  $validated['quantity'];
             $cartItem->save();
         } else{
-            CartItem::Create([
+            CartItem::create([
                 'user_id' => auth()->id(),
-                'product_id' => $validated['product_id'],
+                'product_id' => $product_id,
                 'quantity' => $validated['quantity']
             ]);
         }
-
-        return back()->with('message', 'Product added to cart!');
-
+            return response()->json([
+                'status' => true,
+                'message' => 'Product added to cart!',
+            ], Response::HTTP_ACCEPTED);
     }
 
-    public function update(Request $request, CartItem $cart)
+    public function update(Request $request, $cart_id)
     {
         $validated = $request->validate([
             'quantity' => 'required|integer|min:1'
         ]);
 
-        if ($cart->user_id !== auth()->id()) {
-            abort(403);
+        $cartItem = CartItem::where('id', $cart_id)
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$cartItem) {
+            return back()->with('error', 'Cart item not found.');
         }
 
-        $cart->update([
+        $cartItem->update([
             'quantity' => $validated['quantity']
         ]);
-        return back()->with('message', 'Cart updated!');
+
+        return back()->with('success', 'Cart updated!');
     }
+
 
     public function destroy(CartItem $cart)
     {
