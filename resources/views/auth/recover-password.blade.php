@@ -68,14 +68,14 @@
 <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
 <script>
   function resetPassword(){
-    axios.post('{{route('password.update')}}', {
+    axios.post('{{ route('password.update', ['guard' => session('guard')]) }}', {
       email: '{{ $email }}',
       password: document.getElementById('password').value,
       password_confirmation: document.getElementById('password_confirmation').value,
       token: '{{ $token }}',
     }).then(function(response) {
       toastr.success(response.data.message);
-      window.location.href = '/cms/{{session('guard')}}/login'
+      window.location.href = '/app/{{session('guard')}}/login'
     }).catch(function(error) {
       toastr.error(error.response.data.message);
     })

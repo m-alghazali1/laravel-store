@@ -59,7 +59,7 @@
 <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
 <script>
   function sendRestEmail(){
-    axios.post('{{route('password.email')}}', {
+    axios.post('{{ route('password.email', ['guard' => session('guard')]) }}', {
       email: document.getElementById('email').value,
     }).then(function(response) {
       toastr.success(response.data.message);

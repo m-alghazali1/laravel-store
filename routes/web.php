@@ -44,11 +44,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(functi
     Route::delete('users/{id}', [Admin\UserController::class, 'destroy'])->name('users.destroy');
 });
 
-Route::prefix('app')->name('auth.')->middleware('guest:admin')->group(function () {
-    Route::get('{guard}/login', [AuthController::class, 'showLogin'])->name('login.show');
-    Route::post('/login', [AuthController::class, 'login'])->name('login');
-    Route::get('{guard}/register', [AuthController::class, 'showRegister'])->name('register.show');
-    Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::prefix('app')->middleware('guest:admin')->group(function () {
+    Route::get('{guard}/login', [AuthController::class, 'showLogin'])->name('auth.login.show');
+    Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
+    Route::get('{guard}/register', [AuthController::class, 'showRegister'])->name('auth.register.show');
+    Route::post('/register', [AuthController::class, 'register'])->name('auth.register');
+
+   Route::get('/{guard}/forgot-password', [AuthController::class, 'forgotPassword'])->name('password.request');
+    Route::post('/{guard}/forgot-password', [AuthController::class, 'sendResetEmail'])->name('password.email');
+    Route::get('/forgot-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/{guard}/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
 
