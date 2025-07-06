@@ -89,7 +89,7 @@ This project is a simple e-commerce platform built with **Laravel**, featuring a
 ## 👤 Demo Accounts
 
 ### Admin
-- Email: admin@admin.com
+- Email: test@admin.com
 - Password: 100200300
 
 ### User
