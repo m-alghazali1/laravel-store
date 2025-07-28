@@ -15,12 +15,22 @@ use function Laravel\Prompts\alert;
 
 class ProductController extends Controller
 {
+    public function __construct()
+    {
+        $this->authorizeResource(Product::class, 'product');
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $products = Product::with('category', 'images')->get();
+        $user = auth(session('guard'))->user();
+        $query = Product::with(['category', 'images']);
+
+        if (session('guard') === 'vendor') {
+            $query->where('vendor_id', $user->id);
+        }
+        $products = $query->get();
         return view('admin.products.index', compact('products'));
     }
 
@@ -57,7 +67,9 @@ class ProductController extends Controller
         $product->price = $request->input('price');
         $product->quantity = $request->input('quantity');
         $product->category_id = $request->input('category_id');
-
+        if (session('guard') === 'vendor') {
+            $product->vendor_id = auth('vendor')->id();
+        }
         if (!$product->save()) {
             return response()->json([
                 'status' => false,
@@ -101,9 +113,9 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Product $product)
     {
-        $product = Product::with(['category', 'images'])->findOrFail($id);
+        $product = Product::with(['category', 'images'])->findOrFail($product->id);
         $moreProduct = Product::inRandomOrder()->take(4)->get();
 
         return view('admin.products.show', [
@@ -115,9 +127,12 @@ class ProductController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Product $product)
     {
-        $product = Product::with('category')->findOrFail($id);
+        if (session('guard') === 'vendor' && $product->vendor_id !== auth('vendor')->id()) {
+            abort(403);
+        }
+        $product = Product::with('category')->findOrFail($product->id);
         $categories = Category::all();
         return view('admin.products.edit', ['product' => $product, 'categories' => $categories]);
     }
@@ -125,8 +140,11 @@ class ProductController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Product $product)
     {
+        if (session('guard') === 'vendor' && $product->vendor_id !== auth('vendor')->id()) {
+            abort(403);
+        }
         $request->validate([
             'name' => 'required|string|max:100',
             'description' => 'nullable|string',
@@ -135,8 +153,6 @@ class ProductController extends Controller
             'category_id' => 'required|exists:categories,id',
             'images.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
-
-        $product = Product::findOrFail($id);
 
         $product->name = $request->input('name');
         $product->description = $request->input('description');
@@ -168,24 +184,36 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Product $product)
     {
-        $deleted = Product::findOrFail($id)->delete();
+        if (session('guard') === 'vendor' && $product->vendor_id !== auth('vendor')->id()) {
+            abort(403);
+        }
+
+        $deleted = $product->delete();
         return response()->json([
             "status" => $deleted,
             "message" => $deleted ? "Deleted Successfully" : "Delete Failed",
-            "icon" => $deleted ? "success" : "Error",
+            "icon" => $deleted ? "success" : "error",
         ]);
     }
 
     public function trash()
     {
-        $products = Product::onlyTrashed()->get();
+        $user = auth(session('guard'))->user();
+        $query = Product::onlyTrashed()->with(['category', 'images']);
+        if (session('guard') === 'vendor') {
+            $query->where('vendor_id', $user->id);
+        }
+        $products = $query->get();
         return view('admin.products.trash', compact('products'));
     }
 
     public function forceDelete(string $id)
     {
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $this->authorize('forceDelete', $product);
+
         $deleted = Product::onlyTrashed()->findOrFail($id)->forceDelete();
         return response()->json([
             "status" => "$deleted",
@@ -197,8 +225,10 @@ class ProductController extends Controller
 
     public function restore($id)
     {
-        $products = Product::onlyTrashed()->findOrFail($id);
-        $restored = $products->restore();
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $product);
+
+        $restored = $product->restore();
 
         return response()->json([
             'status' => $restored,

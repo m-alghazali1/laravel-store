@@ -49,6 +49,10 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+        'vendor' => [
+            'driver' => 'session',
+            'provider' => 'vendors',
+        ],
        'admin-api' =>[
            'driver' => 'sanctum',
            'provider' => 'admins'
@@ -85,6 +89,10 @@ return [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class,
         ],
+        'vendors' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Vendor::class,
+        ],
     ],
 
     /*
@@ -119,7 +127,12 @@ return [
             'expire' => 3,
             'throttle' => 60,
         ],
-
+        'vendors' => [
+            'provider' => 'vendors',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
     ],
 
     /*

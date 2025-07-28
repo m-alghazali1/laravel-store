@@ -20,7 +20,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
     <link rel="stylesheet" href="{{ asset('assets/dist/css/adminlte.min.css') }}">
     <!-- toaster style --}}-->
     <link rel="stylesheet" href="{{ asset('assets/plugins/toastr/toastr.min.css') }}">
-
+    <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css') }}">
     @yield('style')
 </head>
 
@@ -46,7 +47,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             style="color: #ccc; font-size: 28px; margin-right: 12px;"></i>
                     </div>
                     <div class="info">
-                        <a href="{{route('admin.index')}}" class="d-block">{{ auth()->user()->name }}</a>
+                        <a href="{{route('admin.admins.show', auth('admin')->user()->id)}}" class="d-block">{{ auth()->user()->name }}</a>
                     </div>
                 </div>
 
@@ -55,42 +56,146 @@ scratch. This page gets rid of all links and provides the needed markup only.
                 <nav class="mt-2">
                     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                         data-accordion="false">
-                        @include('admin.componets.nav-item', [
-                            'route'=>'admin.users.index',
-                            'name'=>'Users',
-                            'icon'=>'fa-user-tie'
-                        ])
-                        @include('admin.componets.nav-item', [
-                            'route' => 'admin.products.create',
-                            'name' => 'Create Products',
-                            'icon' => 'fa-plus'
-                        ])
-                        @include('admin.componets.nav-item', [
-                            'route'=>'admin.products.index',
-                            'name'=> 'All Products',
-                            'icon'=>'fa-th-large'
-                        ])
-                        @include('admin.componets.nav-item',[
-                            'route'=>'admin.categories.create',
-                            'name'=>'Create Category',
-                            'icon'=>'fa-plus',
-                        ])
-                        @include('admin.componets.nav-item',[
-                            'route'=>'admin.categories.index',
-                            'name'=>'All Category',
-                            'icon'=>'fa-th-large'
-                        ])
+                        @canany(['Create-Category', 'Read-Categories'], 'admin')
+                            @include('admin.componets.nav-item', [
+                                'routeName' => 'categories',
+                                'label' => __('cms.categories'),
+                                'icon' => 'fas fa-dice-d20',
+                                'options' => [
+                                    [
+                                        'label' => __('cms.create'),
+                                        'route' => 'admin.categories.create',
+                                        'permission' => 'Create-Category'
+                                    ],
+                                    [
+                                        'label' => __('cms.read'),
+                                        'route' => 'admin.categories.index',
+                                        'permission' => 'Read-Category'
+                                    ],
+                                ],
+                            ])
+                        @endcanany
 
+                                 @canany(['Create-Product', 'Read-Products',], session('guard'))
+                                    @include('admin.componets.nav-item', [
+                                        'routeName' => 'products',
+                                        'label' => __('cms.products'),
+                                        'icon' => 'fas fa-lemon',
+                                        'options' => [
+                                            [
+                                                'label' => __('cms.create'),
+                                                'route' => 'admin.products.create',
+                                                'permission' => 'Create-Product'
+                                            ],
+                                            [
+                                                'label' => __('cms.read'),
+                                                'route' => 'admin.products.index',
+                                                'permission' => 'Read-Product'
+                                            ],
+                                            [
+                                                'label' => __('cms.trash'),
+                                                'route' => 'admin.products.trash',
+                                                'permission' => 'Trash-Product'
+                                            ],
+                                        ],
+                                    ])
+                                   @endcanany
+                                        @canany(['Create-Role', 'Read-Roles'], 'admin')
+                                            @include('admin.componets.nav-item', [
+                                                'routeName' => 'roles',
+                                                'label' => __('cms.roles'),
+                                                'icon' => 'fas fa-dice-d20',
+                                                'options' => [
+                                                    [
+                                                        'label' => __('cms.create'),
+                                                        'route' => 'admin.roles.create',
+                                                        'permission' => 'Create-Role'
+                                                    ],
+                                                    [
+                                                        'label' => __('cms.read'),
+                                                        'route' => 'admin.roles.index',
+                                                        'permission' => 'Read-Roles'
+                                                    ],
+                                                ],
+                                            ])
+                                        @endcanany
+
+                    @canany(['Create-Admin', 'Read-Admins'], 'admin')
+                        <li class="nav-header">{{__('cms.hr')}}</li>
+                    @endcanany
+                    @canany(['Create-Admin', 'Read-Admins'], 'admin')
                         @include('admin.componets.nav-item', [
-                            'route'=>'admin.products.trash',
-                            'name'=>'Trash Products',
-                            'icon'=>'fa-trash'
+                            'routeName' => 'admin',
+                            'label' => __('cms.admins'),
+                            'icon' => 'fas fa-dice-d20',
+                            'options' => [
+                                [
+                                    'label' => __('cms.create'),
+                                    'route' => 'admin.admins.create',
+                                    'permission' => 'Create-Admin'
+
+                                ],
+                                [
+                                    'label' => __('cms.read'),
+                                    'route' => 'admin.admins.index',
+                                    'permission' => 'Read-Admins'
+                                ],
+                            ],
                         ])
+                    @endcanany
+
+                    @canany(['Create-User', 'Read-Users'], 'admin')
                         @include('admin.componets.nav-item', [
-                            'route'=>'admin.logout',
-                            'name'=>'Logout',
-                            'icon'=>'fa-sign-out-alt'
+                            'routeName' => 'user',
+                            'label' => __('cms.users'),
+                            'icon' => 'fas fa-user-tie',
+                            'options' => [
+                                [
+                                    'label' => __('cms.create'),
+                                    'route' => 'admin.users.create',
+                                    'permission' => 'Create-User'
+
+                                ],
+                                [
+                                    'label' => __('cms.read'),
+                                    'route' => 'admin.users.index',
+                                    'permission' => 'Read-Users'
+                                ],
+                            ],
                         ])
+                    @endcanany
+
+                    @canany(['Create-Vendor', 'Read-Vendors'], 'admin')
+                        @include('admin.componets.nav-item', [
+                            'routeName' => 'vendor',
+                            'label' => __('cms.vendors'),
+                            'icon' => 'fas fa-user-tie',
+                            'options' => [
+                                [
+                                    'label' => __('cms.create'),
+                                    'route' => 'admin.vendors.create',
+                                    'permission' => 'Create-vendor'
+
+                                ],
+                                [
+                                    'label' => __('cms.read'),
+                                    'route' => 'admin.vendors.index',
+                                    'permission' => 'Read-vendors'
+                                ],
+                            ],
+                        ])
+                    @endcanany
+
+                    <li class="nav-item">
+                        <a href="{{ route('admin.logout') }}" class="nav-link">
+                            <i class="nav-icon fas fa-sign-out-alt"></i>
+                            <p>
+                                {{ __('cms.logout') }}
+                                <span class="right badge badge-danger">New</span>
+                            </p>
+                        </a>
+                    </li>
+
                     </ul>
                 </nav>
                 <!-- /.sidebar-menu -->

@@ -51,7 +51,7 @@
 <script src="{{ asset('assets/plugins/toastr/toastr.min.js') }}"></script>
 <script>
   function requestEmailVerification(){
-    axios.get('/cms/admin/email-verification/request', {
+    axios.get('{{ route('verification.request') }}', {
     }).then(function(response) {
       toastr.success(response.data.message);
     }).catch(function(error) {

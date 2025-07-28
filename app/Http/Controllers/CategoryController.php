@@ -4,16 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class CategoryController extends Controller
 {
+    public function __construct()
+    {
+        $this->authorizeResource(Category::class, 'category');
+    }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         $categories = Category::with(['products'])->get();
-        
+
         return view('admin.categories.category', compact('categories'));
     }
 
@@ -41,9 +46,11 @@ class CategoryController extends Controller
         $category->description = $request->input('description');
         $isSaved = $category->save();
 
-        return redirect()->back()->with([
-            'status' => $isSaved,
-            'message' => $isSaved ? "Category saved successfuly" : "Category save failed!"]
+        return redirect()->back()->with(
+            [
+                'status' => $isSaved,
+                'message' => $isSaved ? "Category saved successfuly" : "Category save failed!"
+            ]
         );
     }
 
@@ -54,7 +61,7 @@ class CategoryController extends Controller
     {
         $category = Category::with('products')->find($id);
 
-        if(!$category){
+        if (!$category) {
             return response()->json([
                 'message' => 'Not Found'
             ], 404);
@@ -68,42 +75,57 @@ class CategoryController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Category $category)
     {
-        //
+        $category = Category::findOrFail($category->id);
+        return view('admin.categories.edit', ['data' => $category]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, Category $category)
     {
         $validated = $request->validate([
             'name' => 'required|string|min:5',
             'description' => 'nullable|string'
         ]);
-
-        $category = Category::findOrFail($id);
+        $category = Category::findOrFail($category->id);
         $category->name = $request->input('name');
         $category->description = $request->input('description');
         $isSaved = $category->save();
 
-        return response()->json([
-            'message' => $isSaved ? 'Category Created Successfully' : 'Category Created failed',
-            'category' => $category
-        ]);
+        if (!$isSaved) {
+            return response()->json([
+                'icon' => 'error',
+                'message' => 'Category Update Failed'
+            ], Response::HTTP_BAD_REQUEST);
+        } else {
+            return response()->json([
+                'icon' => 'success',
+                'message' => 'Category Updated Successfully',
+            ], Response::HTTP_OK);
+        }
+
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Category $category)
     {
-        $deleted = Category::findOrFail($id);
-        $deleted->delete();
-        return redirect()->back()->with([
-            "status" => $deleted,
-            "message" => $deleted ? "Deleted Successfully" : "Delete Failed",
-        ]);
+        $deleted = $category->delete();
+
+        if (!$deleted) {
+            return response()->json([
+                'icon' => 'error',
+                'message' => 'Failed to delete category',
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        return response()->json([
+            'icon' => 'success',
+            'message' => 'Category deleted successfully',
+        ], Response::HTTP_OK);
     }
 }

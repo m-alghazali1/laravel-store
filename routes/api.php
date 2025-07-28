@@ -1,8 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\Auth\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CartController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,13 +25,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // ok - api
 Route::prefix('app')->name('auth.')->group(function () {
     Route::prefix('{guard}')->group(function () {
-        Route::post('/login', [\App\Http\Controllers\Api\Auth\AuthController::class, 'login'])->name('login');
-        Route::post('/register', [\App\Http\Controllers\Api\Auth\AuthController::class, 'register'])->name('register');
+        Route::post('/login', [AuthController::class, 'login'])->name('login');
+        Route::post('/register', [AuthController::class, 'register'])->name('register');
+        Route::post('/forgot-password', [AuthController::class, 'sendResetEmail'])->name('password.email');
+        Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
     });
+
 });
 
 // ok - api
-Route::Post('/logout', [\App\Http\Controllers\Api\Auth\AuthController::class, 'logout'])->middleware(['auth:sanctum'])->name('logout');
+Route::Post('/logout', [AuthController::class, 'logout'])->middleware(['auth:sanctum'])->name('logout');
 
 // ok - api
 
@@ -37,25 +43,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:admin-api'])->group(fu
 
     Route::prefix('products')->name('products.')->group(function () {
 
-        Route::get('/trash', [\App\Http\Controllers\Api\Admin\ProductController::class, 'trash'])->name('trash'); // ok - api
-        Route::post('/restore/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'restore'])->name('restore'); // ok - api
-        Route::delete('/force-delete/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'forceDelete'])->name('force-delete'); // ok - api
+        Route::get('/trash', [ProductController::class, 'trash'])->name('trash'); // ok - api
+        Route::post('/restore/{id}', [ProductController::class, 'restore'])->name('restore'); // ok - api
+        Route::delete('/force-delete/{id}', [ProductController::class, 'forceDelete'])->name('force-delete'); // ok - api
 
-        Route::delete('delete-image/{id}', [\App\Http\Controllers\Api\Admin\ProductController::class, 'deleteImage'])->name('admin.products.image.delete'); // ok - api
+        Route::delete('delete-image/{id}', [ProductController::class, 'deleteImage'])->name('admin.products.image.delete'); // ok - api
     });
-    Route::resource('products', \App\Http\Controllers\Api\Admin\ProductController::class); // ok - api
+
+    Route::resource('products', ProductController::class); // ok - api
 });
 
 // ok - api
-Route::resource('products', \App\Http\Controllers\Api\ProductController::class); // ok - api
-Route::get('products/category/{id}', [\App\Http\Controllers\Api\ProductController::class, 'categoryProducts'])->name('products.category'); // ok - api
+Route::resource('products', ProductController::class); // ok - api
+Route::get('products/category/{id}', [ProductController::class, 'categoryProducts'])->name('products.category'); // ok - api
 
 // ok - api
 Route::prefix('cart')->middleware(['auth:user-api'])->group(function () {
-    Route::get('/', [\App\Http\Controllers\Api\CartController::class, 'index'])->name('cart.index'); // ok -api
-    Route::post('/add', [\App\Http\Controllers\Api\CartController::class, 'store'])->name('cart.add'); // ok - api
-    Route::put('/update/{id}', [\App\Http\Controllers\Api\CartController::class, 'update'])->name('cart.update');  // ok - api
-    Route::delete('/remove/{id}', [\App\Http\Controllers\Api\CartController::class, 'destroy'])->name('cart.remove');  //ok - api
+    Route::get('/', [CartController::class, 'index'])->name('cart.index'); // ok -api
+    Route::post('/add', [CartController::class, 'store'])->name('cart.add'); // ok - api
+    Route::put('/update/{id}', [CartController::class, 'update'])->name('cart.update');  // ok - api
+    Route::delete('/remove/{id}', [CartController::class, 'destroy'])->name('cart.remove');  //ok - api
 });
 
 

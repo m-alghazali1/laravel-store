@@ -43,7 +43,7 @@
                                 <tbody>
                                     @foreach ($categories as $category)
                                         <tr>
-                                            <td>{{$category->id}}</td>
+                                            <td>{{$loop->index + 1}}</td>
                                             <td>{{$category->name}}</td>
                                             <td>{{$category->description}}</td>
                                             <td>
@@ -52,14 +52,12 @@
                                                         class="btn btn-info">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
-                                                    <form method="POST"
-                                                        action="{{ route('admin.categories.destroy', $category->id) }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-danger">
-                                                            <i class="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </form>
+
+                                                    <button type="submit" onclick="destroy({{ $category->id }}, this)"
+                                                        class="btn btn-danger">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+
 
                                                 </div>
                                             </td>
@@ -74,4 +72,51 @@
             </div>
         </div>
     </section>
+@endsection
+
+
+@section('script')
+    <script>
+        function destroy(id, reference) {
+
+            var Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+            axios.delete(`/admin/categories/${id}`)
+                .then(function (response) {
+                    Toast.fire({
+                        icon: response.data.icon,
+                        title: response.data.message
+                    })
+                    reference.closest('tr').remove();
+                })
+                .catch(function (error) {
+                    Toast.fire({
+                        icon: error.response.data.icon,
+                        title: error.response.data.message
+                    })
+
+                })
+        }
+
+        document.addEventListener('DOMContentLoaded', function (event) {
+            var Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000
+            });
+
+            @if(session()->has('status'))
+                Toast.fire({
+                    icon: '{{ session('icon') }}',
+                    title: '{{ session('message') }}'
+                });
+            @endif
+
+        });
+    </script>
 @endsection

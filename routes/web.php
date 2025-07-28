@@ -1,12 +1,17 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\pay\PaymentController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\RoleController;
+// use App\Http\Controllers\UserController;
 use App\Http\Controllers\admin;
+use App\Http\Controllers\VendorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/products/search', [ProductController::class, 'search'])->name('products.search');
-Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth:admin,vendor', 'verified'])->group(function () {
     Route::resource('categories', CategoryController::class);
 
     Route::prefix('products')->name('products.')->group(function () {
@@ -37,14 +42,24 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(functi
 
 
     // New Routs
-    Route::get('/data', [\App\Http\Controllers\Admin\AdminController::class, 'index'])->name('index');
+    Route::get('/data', [AdminController::class, 'index'])->name('index');
 
-    Route::get('users', [Admin\UserController::class, 'index'])->name('users.index');
-    Route::get('users/{id}', [Admin\UserController::class, 'show'])->name('users.show');
-    Route::delete('users/{id}', [Admin\UserController::class, 'destroy'])->name('users.destroy');
+    Route::resource('users',UserController::class);
+    Route::get('/users/{user}/permissions', [UserController::class, 'editUserPermissions'])->name('user.edit-permissions');
+    Route::put('/users/{user}/permissions', [UserController::class, 'updateUserPermissions'])->name('user.update-permissions');
+    // Route::get('users', [Admin\UserController::class, 'index'])->name('users.index');
+    // Route::get('users/{id}', [Admin\UserController::class, 'show'])->name('users.show');
+    // Route::delete('users/{id}', [Admin\UserController::class, 'destroy'])->name('users.destroy');
+
+    Route::resource('roles', RoleController::class);
+    Route::resource('admins', AdminController::class);
+
+    Route::resource('vendors', VendorController::class);
+
+    Route::put('roles/permissions/edit', [RoleController::class, 'updateRolePermission'])->name('roles.update-permission');
 });
 
-Route::prefix('app')->middleware('guest:admin')->group(function () {
+Route::prefix('app')->middleware('guest:admin,vendor')->group(function () {
     Route::get('{guard}/login', [AuthController::class, 'showLogin'])->name('auth.login.show');
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
     Route::get('{guard}/register', [AuthController::class, 'showRegister'])->name('auth.register.show');
@@ -61,7 +76,7 @@ Route::get('products/category/{id}', [ProductController::class, 'categoryProduct
 Route::resource('products', ProductController::class)->only(['show', 'index',]);;
 
 
-Route::prefix('cart')->middleware(['auth:user'])->group(function () {
+Route::prefix('cart')->middleware(['auth:user', 'verified'])->group(function () {
     Route::get('/', [CartController::class, 'index'])->name('cart.index');
     Route::post('/add/{cart}', [CartController::class, 'store'])->name('cart.add');
     Route::post('/update/{cart}', [CartController::class, 'update'])->name('cart.update');
@@ -69,6 +84,14 @@ Route::prefix('cart')->middleware(['auth:user'])->group(function () {
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
+Route::prefix('app')->middleware(['auth:admin,user,vendor'])->group(function() {
+    Route::get('email-verification', [AuthController::class, 'showVerifyEmail'])->name('verification.notice');
+    Route::get('email-verification/request', [AuthController::class, 'requestEmailverification'])->middleware('throttle:5,1')->name('verification.request');
+    Route::get('email-verification/{id}/{hash}', [AuthController::class, 'verifiyEmail'])->middleware('signed')->name('verification.verify');
+});
+
+Route::get('/checkout', [PaymentController::class, 'checkoutForm'])->name('checkout.form');
+Route::post('/checkout', [PaymentController::class, 'checkout'])->name('checkout.charge');
 //Route::get('/cart/debug', function () {
 //    return \Illuminate\Support\Facades\Auth::guard('user')->check() ? 'Logged in as user' : 'Not logged in';
 //});

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -15,10 +14,11 @@ return new class extends Migration
             $table->id();
             $table->string('name', 50);
             $table->text('description');
-            $table->decimal('old_price',10,2)->nullable();
+            $table->decimal('old_price', 10, 2)->nullable();
             $table->decimal('price');
             $table->integer('quantity');
             $table->foreignId('category_id')->constrained()->onDelete('Cascade');
+            $table->foreignId('vendor_id')->nallable()->constrained('vendors')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();
         });

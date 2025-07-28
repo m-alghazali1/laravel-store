@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\User;
+use App\Models\Vendor;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -19,8 +21,12 @@ class AuthController extends Controller
     public function showRegister(Request $request, $guard)
     {
         $validator = validator(['guard' => $guard], [
-            'guard' => 'required|string|in:admin,user'
+            'guard' => 'required|string|in:admin,user,vendor',
         ]);
+        if (!$validator->fails() && $guard === 'vendor') {
+            session()->put('guard', $guard);
+            return view("admin.vendors.register", compact('guard'));
+        }
         if (!$validator->fails()) {
             session()->put('guard', $guard);
             return view("auth.register", compact('guard'));
@@ -30,12 +36,22 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $validator = validator($request->all(), [
-            'name' => "required|string",
-            'email' => "required|email",
-            'password' => "required|string|confirmed",
-            'guard' => 'required|in:admin,user'
-        ]);
+        $guard = $request->input('guard');
+        $rules = [
+            'name' => 'required|string',
+            'email' => "required|email|unique:{$guard}s,email",
+            'password' => 'required|string|confirmed',
+            'guard' => 'required|in:admin,user,vendor',
+        ];
+
+        if ($guard === 'vendor') {
+            $rules['phone'] = 'required|string|max:15';
+            $rules['address'] = 'required|string|max:255';
+            $rules['logo'] = 'nullable|image|mimes:jpeg,png,jpg|max:2048';
+        }
+
+        $validator = validator($request->all(), $rules);
+
         $guard = $request->input('guard');
         if (!$validator->fails()) {
 
@@ -45,12 +61,33 @@ class AuthController extends Controller
                 $admin->email = $request->input("email");
                 $admin->password = Hash::make($request->input("password"));
                 $saved = $admin->save();
-            } else {
+
+                $admin->assignRole('Super Admin');
+            }
+            if ($guard === 'user') {
                 $user = new User();
                 $user->name = $request->input("name");
                 $user->email = $request->input("email");
                 $user->password = Hash::make($request->input("password"));
                 $saved = $user->save();
+
+                $user->assignRole('Customer');
+            }
+            if ($guard === 'vendor') {
+                $vendor = new Vendor();
+                $vendor->name = $request->input("name");
+                $vendor->email = $request->input("email");
+                $vendor->phone = $request->input("phone");
+                $vendor->address = $request->input("address");
+                if ($request->hasFile('logo')) {
+                    $logo = $request->file('logo');
+                    $logoPath = $logo->store('logos', 'public');
+                    $vendor->logo = $logoPath;
+                }
+                $vendor->password = Hash::make($request->input("password"));
+                $saved = $vendor->save();
+
+                $vendor->assignRole('Store Owner');
             }
 
             return response()->json([
@@ -65,13 +102,15 @@ class AuthController extends Controller
             'message' => $validator->getMessageBag()->first()
         ], Response::HTTP_BAD_REQUEST);
     }
-    public function forgotPassword(Request $request, $guard) {
+    public function forgotPassword(Request $request, $guard)
+    {
         session()->put(['guard' => $guard]);
 
         return response()->view('auth.forgot-password');
     }
 
-    public function sendResetEmail(Request $request, $guard) {
+    public function sendResetEmail(Request $request, $guard)
+    {
         session()->put(['guard' => $guard]);
 
         $broker = Str::plural(session('guard'));
@@ -80,12 +119,12 @@ class AuthController extends Controller
             // 'email' => 'required|email'
         ]);
 
-        if(!$validator->fails()) {
+        if (!$validator->fails()) {
             $status = Password::broker($broker)->sendResetLink($request->only('email'));
             return $status == Password::RESET_LINK_SENT
-            ? response()->json(['status' => true, 'message' => __($status)])
-            : response()->json(['status' => false, 'message' => __($status)], Response::HTTP_BAD_REQUEST);
-        }else{
+                ? response()->json(['status' => true, 'message' => __($status)])
+                : response()->json(['status' => false, 'message' => __($status)], Response::HTTP_BAD_REQUEST);
+        } else {
             return response()->json([
                 'status' => false,
                 'message' => $validator->getMessageBag()->first(),
@@ -93,30 +132,26 @@ class AuthController extends Controller
         }
     }
 
-    public function showResetPassword(Request $request, $token) {
+    public function showResetPassword(Request $request, $token)
+    {
         return response()->view('auth.recover-password', [
             'token' => $token,
             'email' => $request->input('email'),
-            'guard' => session('guard')]);
+            'guard' => session('guard')
+        ]);
     }
 
-    public function resetPassword(Request $request, $guard) {
+    public function resetPassword(Request $request, $guard)
+    {
         session()->put(['guard' => $guard]);
         $validator = validator($request->all(), [
             'token' => 'required',
             'email' => 'required|email|exists:password_reset_tokens,email',
             'password' => ['required', 'string', 'confirmed']
-            // Password::min(3)
-            //     //     ->symbols()
-            //     //     ->latters()
-            //     //     ->numberrs()
-            //     //     ->mixedCase()
-            //     //     ->uncompromised()
-            //     // ],
         ]);
-        if(! $validator->fails()) {
+        if (!$validator->fails()) {
             $broker = Str::plural($guard);
-            $status = Password::broker($broker)->reset($request->all(), function($user, $password) {
+            $status = Password::broker($broker)->reset($request->all(), function ($user, $password) {
                 $user->forceFill(['password' => Hash::make($password)]);
                 $user->save();
                 event(new PasswordReset($user));
@@ -124,7 +159,7 @@ class AuthController extends Controller
             return $status == Password::PASSWORD_RESET
                 ? response()->json(['status' => true, 'message' => __($status)])
                 : response()->json(['status' => false, 'message' => __($status)], Response::HTTP_BAD_REQUEST);
-        }else{
+        } else {
             return response()->json([
                 'status' => false,
                 'message' => $validator->getMessageBag()->first(),
@@ -132,11 +167,41 @@ class AuthController extends Controller
         }
     }
 
+    public function showVerifyEmail()
+    {
+        return response()->view('auth.verify-email');
+    }
 
+    public function requestEmailverification(Request $request)
+    {
+        $guard = session('guard');
+        $request->user($guard)->sendEmailVerificationNotification();
+        return response()->json([
+            'status' => true,
+            'message' => 'Verification link sent to your email'
+        ], Response::HTTP_OK);
+    }
+
+    public function verifiyEmail(EmailVerificationRequest $emailVerificationRequest)
+    {
+        $emailVerificationRequest->fulfill();
+        $guard = session('guard');
+        if ($guard === '' || $guard === 'null') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Invalid guard'
+            ]);
+        }
+        if ($guard === 'admin') {
+            return redirect()->route('admin.products.index');
+        } else {
+            return redirect()->route('products.index');
+        }
+    }
     public function showLogin(Request $request, $guard)
     {
         $validator = validator(['guard' => $guard], [
-            'guard' => 'required|string|in:admin,user',
+            'guard' => 'required|string|in:admin,user,vendor',
         ]);
         if (!$validator->fails()) {
             session()->put('guard', $guard);
@@ -148,7 +213,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $table = Str::plural(session('guard'));
-
+        // dd($table);
         $validator = validator($request->all(), [
             'email' => "required|email|exists:$table,email",
             'password' => 'required|string',
@@ -158,7 +223,7 @@ class AuthController extends Controller
         $guard = session('guard');
         if (!$validator->fails()) {
             if (Auth::guard(session('guard'))->attempt($request->only(['email', 'password']), $request->input('remember_me'))) {
-                $defaultRedirectUrl = $guard === 'admin'
+                $defaultRedirectUrl = $guard === 'admin' || $guard === 'vendor'
                     ? route('admin.products.index')
                     : route('products.index');
 
@@ -179,23 +244,14 @@ class AuthController extends Controller
         }
     }
 
+
     public function logout(Request $request)
     {
-        if (Auth::guard('admin')->check()) {
-            Auth::guard('admin')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            return redirect()->route('auth.login.show', ['guard' => 'admin']);
-        }
-
-        if (Auth::guard('user')->check()) {
-            Auth::guard('user')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            return redirect()->route('auth.login.show', ['guard' => 'user']);
-        }
-
-        return redirect('/');
+        $guard = session('guard');
+        auth($guard)->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('auth.login.show', ['guard' => $guard]);
     }
 
 }
